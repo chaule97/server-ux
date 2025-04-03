@@ -1,6 +1,6 @@
 # Copyright 2020 Ecosoft Co., Ltd. (http://ecosoft.co.th)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
-from odoo import _, api, fields, models
+from odoo import api, fields, models
 
 
 class TierValidation(models.AbstractModel):
@@ -14,7 +14,9 @@ class TierValidation(models.AbstractModel):
                 rec.can_forward = False
                 continue
             sequences = self._get_sequences_to_approve(self.env.user)
-            reviews = rec.review_ids.filtered(lambda l: l.sequence in sequences)
+            reviews = rec.review_ids.filtered(
+                lambda review, sequences=sequences: review.sequence in sequences
+            )
             definitions = reviews.mapped("definition_id")
             rec.can_forward = True in definitions.mapped("has_forward")
 
@@ -24,7 +26,10 @@ class TierValidation(models.AbstractModel):
         if not reviews:
             return False
         return not any(
-            [s not in ("approved", "forwarded") for s in reviews.mapped("status")]
+            [
+                status not in ("approved", "forwarded")
+                for status in reviews.mapped("status")
+            ]
         )
 
     def _get_forwarded_notification_subtype(self):
@@ -33,14 +38,14 @@ class TierValidation(models.AbstractModel):
     def forward_tier(self):
         self.ensure_one()
         sequences = self._get_sequences_to_approve(self.env.user)
-        reviews = self.review_ids.filtered(lambda l: l.sequence in sequences)
+        reviews = self.review_ids.filtered(lambda review: review.sequence in sequences)
         ctx = self._add_comment("forward", reviews)["context"]
         comment = (
             self.env["comment.wizard"].with_context(**ctx).create({"comment": "/"})
         )
         wizard = self.env.ref("base_tier_validation_forward.view_forward_wizard")
         return {
-            "name": _("Forward"),
+            "name": self.env._("Forward"),
             "type": "ir.actions.act_window",
             "view_mode": "form",
             "res_model": "tier.validation.forward.wizard",
@@ -58,7 +63,8 @@ class TierValidation(models.AbstractModel):
         self.ensure_one()
         tier_reviews = tiers or self.review_ids
         user_reviews = tier_reviews.filtered(
-            lambda r: r.status != "approved" and (self.env.user in r.reviewer_ids)
+            lambda review: review.status != "approved"
+            and (self.env.user in review.reviewer_ids)
         )
         user_reviews.write(
             {
@@ -86,7 +92,9 @@ class TierValidation(models.AbstractModel):
         )
         if has_comment:
             comment = has_comment.mapped("comment")[0]
-            return _("A review was forwarded from %(user_name)s %(comment)s") % (
-                {"user_name": self.env.user.name, "comment": comment}
+            return self.env._(
+                "A review was forwarded from %(user_name)s %(comment)s",
+                user_name=self.env.user.name,
+                comment=comment,
             )
-        return _("A review was forwarded by %s.") % (self.env.user.name)
+        return self.env._("A review was forwarded by %s.", self.env.user.name)
