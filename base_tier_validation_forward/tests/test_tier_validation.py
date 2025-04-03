@@ -13,7 +13,7 @@ from odoo.addons.base.tests.common import DISABLED_MAIL_CONTEXT
 class TierTierValidation(TransactionCase):
     @classmethod
     def setUpClass(cls):
-        super(TierTierValidation, cls).setUpClass()
+        super().setUpClass()
         cls.env = cls.env(context=dict(cls.env.context, **DISABLED_MAIL_CONTEXT))
         cls.loader = FakeModelLoader(cls.env, cls.__module__)
         cls.loader.backup_registry()
@@ -77,7 +77,7 @@ class TierTierValidation(TransactionCase):
     @classmethod
     def tearDownClass(cls):
         cls.loader.restore_registry()
-        return super(TierTierValidation, cls).tearDownClass()
+        return super().tearDownClass()
 
     def test_01_forward_tier(self):
         # Create new test record
